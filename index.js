@@ -35,10 +35,14 @@ async function run() {
             res.send(result)
 
         })
+
+
+
+
         app.post('/order', async (req, res) => {
             const order = req.body
             const result = await orderCollection.insertOne(order)
-            res.send(result);
+            return res.send({ success: true, result });
         })
 
         app.put('/user/:email', async (req, res) => {
@@ -53,6 +57,22 @@ async function run() {
             const token = jwt.sign({ email: email }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' })
             res.send({ result, token });
         })
+
+        app.put('/updateProduct/:id', async (req, res) => {
+            const id = req.params.id
+            const product = req.body.newAvailableQty
+            const query = { _id: ObjectId(id) }
+            const options = { upsert: true }
+            const updatedProduct = {
+                $set: {
+                    availableQty: product
+                }
+            }
+            const result = await productCollection.updateOne(query, updatedProduct, options)
+
+            res.send(result)
+        })
+
 
     }
     finally {
