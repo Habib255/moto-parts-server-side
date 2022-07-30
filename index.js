@@ -4,6 +4,7 @@ const cors = require('cors');
 const jwt = require('jsonwebtoken');
 require('dotenv').config()
 const app = express()
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const port = process.env.PORT || 5000
 
 
@@ -15,6 +16,8 @@ app.use(express.json())
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.ozrjf7g.mongodb.net/?retryWrites=true&w=majority`;
 
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1 });
+
+
 function verifyJWT(req, res, next) {
     const authHeader = req.headers.authorization;
     if (!authHeader) {
@@ -39,6 +42,7 @@ async function run() {
         const productCollection = client.db('moto_db').collection('products')
         const orderCollection = client.db('moto_db').collection('orders')
         const userCollection = client.db('moto_db').collection('users')
+        const paymentCollection = client.db('moto_db').collection('payments')
 
 
         // get all the product to interface from database
@@ -72,6 +76,13 @@ async function run() {
             const users = await userCollection.find().toArray();
             res.send(users);
         })
+        // get admin from UI 
+        app.get('/admin/:email', async (req, res) => {
+            const email = req.params.email;
+            const user = await userCollection.findOne({ email: email })
+            const isAdmin = user?.role === 'admin'
+            res.send({ admin: isAdmin });
+        })
 
         // update / create user profile  when login or register 
 
@@ -84,8 +95,42 @@ async function run() {
                 $set: user,
             }
             const result = await userCollection.updateOne(filter, updateUser, options);
-            const token = jwt.sign({ email: email }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' })
+            const token = jwt.sign({ email: email }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '5h' })
             res.send({ result, token });
+        })
+
+
+        // Delete a user from ui
+
+        app.delete('/user/:email', verifyJWT, async (req, res) => {
+            const email = req.params.email;
+            const filter = { email: email };
+            const result = await userCollection.deleteOne(filter);
+            res.send(result);
+        })
+
+
+
+
+        //  update user to admin role
+
+
+        app.put('/user/admin/:email', verifyJWT, async (req, res) => {
+            const email = req.params.email;
+            const manager = req.decoded.email;
+            const managerAccount = await userCollection.findOne({ email: manager });
+            if (managerAccount.role === 'admin') {
+                const filter = { email: email };
+                const updateUser = {
+                    $set: { role: 'admin' },
+                }
+                const result = await userCollection.updateOne(filter, updateUser);
+                res.send(result);
+            }
+            else {
+                res.status(403).send({ message: 'forbiddedn access' })
+            }
+
         })
 
 
@@ -121,6 +166,45 @@ async function run() {
             }
 
         });
+        app.get('/order/:id', verifyJWT, async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: ObjectId(id) };
+            const order = await orderCollection.findOne(query);
+            res.send(order)
+
+
+        });
+
+        app.post('/create-payment-intent', verifyJWT, async (req, res) => {
+            const product = req.body;
+            const price = product.price;
+            const amount = price * 100;
+            const paymentIntent = await stripe.paymentIntents.create({
+                amount: amount,
+                currency: 'usd',
+                payment_method_types: ['card']
+            })
+            res.send({ clientSecret: paymentIntent.client_secret })
+
+        })
+
+        app.patch('/order/:id', verifyJWT, async (req, res) => {
+            const id = req.params.id;
+            const payment = req.body;
+            const filter = { _id: ObjectId(id) };
+            const updatedDoc = {
+                $set: {
+                    payment: true,
+                    transactionId: payment.transactionId
+                }
+            }
+
+            const result = await paymentCollection.insertOne(payment);
+            const updatedOrder = await orderCollection.updateOne(filter, updatedDoc);
+            res.send(updatedOrder);
+        })
+
+
 
 
     }
