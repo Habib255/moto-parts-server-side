@@ -83,6 +83,19 @@ async function run() {
             const users = await userCollection.find().toArray();
             res.send(users);
         })
+
+
+
+        app.get('/user/:email', verifyJWT, async (req, res) => {
+            const email = req.params.email
+            const query = { email: email }
+            const user = await userCollection.findOne(query);
+            res.send(user);
+        })
+
+
+
+
         // get admin from UI 
         app.get('/admin/:email', async (req, res) => {
             const email = req.params.email;
@@ -147,6 +160,22 @@ async function run() {
             }
 
         })
+
+        app.put('/user/:email', async (req, res) => {
+            const email = req.params.email
+            const info = req.body.data
+            const options = { upsert: true }
+            const updatedDoc = {
+                $set: { data }
+            }
+            const result = await userCollection.updateOne(info, updatedDoc, options)
+
+            res.send(result)
+        })
+
+
+
+
 
 
         // update data / / update product quantity after order done
