@@ -53,6 +53,13 @@ async function run() {
             const products = await cursor.toArray();
             res.send(products);
         })
+        // post  product to  database
+
+        app.post('/product', async (req, res) => {
+            const product = req.body;
+            const result = await productCollection.insertOne(product);
+            res.send(result);
+        })
 
         // get specified product details by id which was clicked by user
 
@@ -106,6 +113,14 @@ async function run() {
             const email = req.params.email;
             const filter = { email: email };
             const result = await userCollection.deleteOne(filter);
+            res.send(result);
+        })
+        // Delete a order from ui
+
+        app.delete('/order/:id', verifyJWT, async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: ObjectId(id) };
+            const result = await orderCollection.deleteOne(filter);
             res.send(result);
         })
 
