@@ -2,6 +2,7 @@ const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const express = require('express')
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
+const { query } = require('express');
 require('dotenv').config()
 const app = express()
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
@@ -43,6 +44,7 @@ async function run() {
         const orderCollection = client.db('moto_db').collection('orders')
         const userCollection = client.db('moto_db').collection('users')
         const paymentCollection = client.db('moto_db').collection('payments')
+        const reviewCollection = client.db('moto_db').collection('reviews')
 
 
         // get all the product to interface from database
@@ -60,6 +62,24 @@ async function run() {
             const result = await productCollection.insertOne(product);
             res.send(result);
         })
+
+
+        // post  review  to  database
+
+        app.post('/review', async (req, res) => {
+            const review = req.body;
+            const result = await reviewCollection.insertOne(review);
+            res.send(result);
+        })
+
+        // get review 
+
+        app.get('/review', async (req, res) => {
+            const reviews = await reviewCollection.find().toArray();
+            res.send(reviews);
+        })
+
+
 
         // get specified product details by id which was clicked by user
 
@@ -85,7 +105,7 @@ async function run() {
         })
 
 
-
+        // get user after update their profile
         app.get('/user/:email', verifyJWT, async (req, res) => {
             const email = req.params.email
             const query = { email: email }
@@ -97,6 +117,7 @@ async function run() {
 
 
         // get admin from UI 
+
         app.get('/admin/:email', async (req, res) => {
             const email = req.params.email;
             const user = await userCollection.findOne({ email: email })
@@ -161,6 +182,8 @@ async function run() {
 
         })
 
+        // update user profile 
+
         app.put('/user/:email', async (req, res) => {
             const email = req.params.email
             const info = req.body.data
@@ -196,6 +219,8 @@ async function run() {
         })
 
 
+        // find all order of user 
+
         app.get('/order', verifyJWT, async (req, res) => {
             const email = req.query.email;
             const decodedEmail = req.decoded.email;
@@ -210,6 +235,10 @@ async function run() {
             }
 
         });
+
+
+        // get single order 
+
         app.get('/order/:id', verifyJWT, async (req, res) => {
             const id = req.params.id;
             const query = { _id: ObjectId(id) };
@@ -218,6 +247,8 @@ async function run() {
 
 
         });
+
+        // create payment intent
 
         app.post('/create-payment-intent', verifyJWT, async (req, res) => {
             const product = req.body;
@@ -231,6 +262,8 @@ async function run() {
             res.send({ clientSecret: paymentIntent.client_secret })
 
         })
+
+        // set payment info to database
 
         app.patch('/order/:id', verifyJWT, async (req, res) => {
             const id = req.params.id;
