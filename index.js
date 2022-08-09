@@ -149,6 +149,20 @@ async function run() {
             const result = await userCollection.deleteOne(filter);
             res.send(result);
         })
+
+
+        // delete a product
+
+        app.delete('/product/:id', async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: ObjectId(id) };
+            const result = await productCollection.deleteOne(filter);
+            res.send(result);
+        })
+
+
+
+
         // Delete a order from ui
 
         app.delete('/order/:id', verifyJWT, async (req, res) => {
@@ -158,6 +172,19 @@ async function run() {
             res.send(result);
         })
 
+        // //   update product from manage all product
+        // app.put('/product/:id', async (req, res) => {
+        //     const id = req.params.id
+        //     const updatedQty = req.body.updatedQty
+        //     const updatedMinQty = req.body.updatedMinQty
+        //     const query = { _id: ObjectId(id) }
+        //     const options = { upsert: true }
+        //     const updatedProduct = {
+        //         $set:  data 
+        //     const result = await productCollection.updateOne(query, updatedProduct, options)
+
+        //     res.send(result)
+        //     })
 
 
 
